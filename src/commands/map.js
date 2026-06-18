@@ -8,7 +8,7 @@ import { runQuietAsync, pool } from "../exec.js";
 import { coveredSourceFiles } from "../coverage.js";
 import { loadMap, saveMap, emptyMap, mapPath, pruneTest } from "../mapStore.js";
 import { isTestFile } from "../select.js";
-import { singlePassVitest } from "../singlepass.js";
+import { singlePassVitest, singlePassJest } from "../singlepass.js";
 
 const TEST_GLOBS = ["**/*.{test,spec}.{js,jsx,ts,tsx,cjs,mjs}", "**/__tests__/**/*.{js,jsx,ts,tsx}"];
 
@@ -85,7 +85,7 @@ export async function mapCommand(args = {}) {
   }
 
   const jobs = Math.max(1, args.jobs || availableParallelism());
-  const singlePass = runner === "vitest" && !args.perFile;
+  const singlePass = (runner === "vitest" || runner === "jest") && !args.perFile;
 
   let measured = 0;
   let fallbacks = [];
@@ -97,7 +97,10 @@ export async function mapCommand(args = {}) {
         (skipped ? ` (${skipped} unchanged, reused)` : "") +
         ".\n"
     );
-    const { byTest } = await singlePassVitest(root, todo, jobs);
+    const { byTest } =
+      runner === "vitest"
+        ? await singlePassVitest(root, todo, jobs)
+        : await singlePassJest(root, todo, jobs);
     for (const f of todo) {
       const sources = byTest.get(f);
       if (sources && sources.length) {

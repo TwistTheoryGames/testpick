@@ -4,7 +4,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runQuietAsync, pool } from "./exec.js";
 
-const SETUP = join(dirname(fileURLToPath(import.meta.url)), "instrument", "vitest-coverage-setup.mjs");
+const INSTRUMENT = join(dirname(fileURLToPath(import.meta.url)), "instrument");
+const SETUP = join(INSTRUMENT, "vitest-coverage-setup.mjs");
+const JEST_SETUP = join(INSTRUMENT, "jest-coverage-setup.cjs");
 
 const USER_CONFIGS = [
   "vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs",
@@ -82,6 +84,63 @@ export async function singlePassVitest(root, testFiles, jobs = 1) {
       const r = await runQuietAsync(
         root,
         ["vitest", "run", ...files, "--config", cfgPath],
+        { env: { TESTPICK_OUT: out, TESTPICK_ROOT: root } }
+      );
+      if (r.status) status = r.status;
+      readResults(out, byTest);
+    });
+    return { byTest, status };
+  } finally {
+    rmSync(cfgPath, { force: true });
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const JEST_CONFIGS = ["jest.config.js", "jest.config.cjs", "jest.config.json"];
+
+/**
+ * A temp Jest config (CJS) that extends the project's own config and appends our
+ * coverage collector to setupFilesAfterEnv. We load jest.config.{js,cjs,json} if
+ * present, else the "jest" field of package.json. Configs we can't require from
+ * CJS (jest.config.mjs/ts) fall through to {} and those files get the isolated
+ * per-file fallback instead.
+ */
+function jestConfigSource(root) {
+  const found = JEST_CONFIGS.find((c) => existsSync(join(root, c)));
+  const setup = JSON.stringify(JEST_SETUP);
+  const loadBase = found
+    ? `let base = require(${JSON.stringify("./" + found)}); base = base && base.default ? base.default : base;`
+    : `let base = {}; try { base = require(${JSON.stringify("./package.json")}).jest || {}; } catch {}`;
+  return [
+    loadBase,
+    `module.exports = Object.assign({}, base, {`,
+    `  setupFilesAfterEnv: [].concat(base.setupFilesAfterEnv || [], [${setup}]),`,
+    `  collectCoverage: false,`,
+    `});`,
+  ].join("\n");
+}
+
+/**
+ * Jest counterpart to singlePassVitest: each shard is one `jest --runInBand`
+ * process (serial within the shard so V8 coverage diffs cleanly), shards run
+ * concurrently. Same fallback contract — unaccounted files are absent from the
+ * returned map and re-measured in isolation by the caller.
+ */
+export async function singlePassJest(root, testFiles, jobs = 1) {
+  const dir = mkdtempSync(join(tmpdir(), "testpick-sp-"));
+  const cfgPath = join(root, ".testpick.tmp.jest.config.cjs");
+  writeFileSync(cfgPath, jestConfigSource(root));
+
+  const shards = shard(testFiles, Math.max(1, jobs));
+  const byTest = new Map();
+  let status = 0;
+
+  try {
+    await pool(shards, shards.length, async (files, i) => {
+      const out = join(dir, `results-${i}.jsonl`);
+      const r = await runQuietAsync(
+        root,
+        ["jest", "--config", cfgPath, "--runInBand", "--runTestsByPath", ...files],
         { env: { TESTPICK_OUT: out, TESTPICK_ROOT: root } }
       );
       if (r.status) status = r.status;
