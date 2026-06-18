@@ -1,6 +1,6 @@
 {
   "name": "testpick",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Run only the tests your diff can actually break. Coverage-based test selection that catches what static import graphs miss — for Jest, Vitest & monorepos.",
   "type": "module",
   "bin": {

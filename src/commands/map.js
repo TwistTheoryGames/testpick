@@ -1,4 +1,4 @@
-import { globSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir, availableParallelism } from "node:os";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -10,18 +10,10 @@ import { loadMap, saveMap, emptyMap, mapPath, pruneTest } from "../mapStore.js";
 import { isTestFile } from "../select.js";
 import { singlePassVitest, singlePassJest } from "../singlepass.js";
 import { findUnits } from "../workspaces.js";
-
-const TEST_GLOBS = ["**/*.{test,spec}.{js,jsx,ts,tsx,cjs,mjs}", "**/__tests__/**/*.{js,jsx,ts,tsx}"];
+import { walkFiles } from "../fswalk.js";
 
 function discoverTestFiles(root) {
-  const found = new Set();
-  for (const pattern of TEST_GLOBS) {
-    for (const f of globSync(pattern, { cwd: root, exclude: ["**/node_modules/**"] })) {
-      const norm = f.split("\\").join("/");
-      if (isTestFile(norm) && !norm.includes("node_modules/")) found.add(norm);
-    }
-  }
-  return [...found];
+  return walkFiles(root).filter((f) => isTestFile(f));
 }
 
 function hashFile(root, file) {

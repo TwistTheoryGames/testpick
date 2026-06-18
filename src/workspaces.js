@@ -1,5 +1,6 @@
-import { readFileSync, existsSync, globSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { walkFiles, globToRegExp } from "./fswalk.js";
 
 /**
  * A "unit" is an independently-tested package: its own dir, its own runner, its
@@ -12,15 +13,16 @@ export function findUnits(root) {
   const patterns = workspacePatterns(root);
   if (!patterns.length) return [{ dir: root, prefix: "" }];
 
-  const seen = new Set();
+  const regexes = patterns.map(globToRegExp);
+  const pkgDirs = walkFiles(root)
+    .filter((f) => f === "package.json" || f.endsWith("/package.json"))
+    .map((f) => f.slice(0, Math.max(0, f.length - "package.json".length)).replace(/\/$/, ""))
+    .filter((d) => d !== ""); // exclude the root package.json
+
   const units = [];
-  for (const pat of patterns) {
-    const glob = pat.endsWith("/package.json") ? pat : `${pat.replace(/\/$/, "")}/package.json`;
-    for (const match of globSync(glob, { cwd: root, exclude: ["**/node_modules/**"] })) {
-      const dir = join(root, match.replace(/\/?package\.json$/, ""));
-      if (seen.has(dir)) continue;
-      seen.add(dir);
-      units.push({ dir, prefix: relative(root, dir).split("\\").join("/") });
+  for (const prefix of pkgDirs) {
+    if (regexes.some((re) => re.test(prefix))) {
+      units.push({ dir: join(root, prefix), prefix });
     }
   }
   return units.length ? units : [{ dir: root, prefix: "" }];
