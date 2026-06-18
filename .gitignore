@@ -2,3 +2,5 @@ node_modules/
 .testpick/
 coverage/
 *.log
+
+.DS_Store
