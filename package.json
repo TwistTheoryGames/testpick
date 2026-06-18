@@ -1,0 +1,33 @@
+{
+  "name": "difftest",
+  "version": "0.1.0",
+  "description": "Run only the tests your diff can actually break. Coverage-based test selection that catches what static import graphs miss — for Jest, Vitest & monorepos.",
+  "type": "module",
+  "bin": {
+    "difftest": "bin/difftest.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "difftest": "node bin/difftest.js"
+  },
+  "keywords": [
+    "test",
+    "test-selection",
+    "regression-test-selection",
+    "jest",
+    "vitest",
+    "ci",
+    "coverage",
+    "monorepo",
+    "git",
+    "diff"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

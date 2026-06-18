@@ -1,0 +1,4 @@
+node_modules/
+.difftest/
+coverage/
+*.log
