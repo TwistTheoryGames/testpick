@@ -1,5 +1,10 @@
 # testpick
 
+[![npm](https://img.shields.io/npm/v/testpick.svg)](https://www.npmjs.com/package/testpick)
+[![CI](https://github.com/TwistTheoryGames/testpick/actions/workflows/ci.yml/badge.svg)](https://github.com/TwistTheoryGames/testpick/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/testpick.svg)](https://www.npmjs.com/package/testpick)
+[![license](https://img.shields.io/npm/l/testpick.svg)](./LICENSE)
+
 **Run only the tests your diff can actually break.**
 
 `testpick` is a test-selection CLI for JavaScript/TypeScript. It looks at what you
@@ -10,6 +15,32 @@ multi-minute CI runs into seconds.
 npx testpick map     # one-time: learn which tests touch which code
 npx testpick run     # from now on: run only what your changes affect
 ```
+
+## Demo
+
+```console
+$ testpick map
+Mapping 23 test file(s) with vitest in 8 single-pass shard(s).
+✔ Map saved to .testpick/map.json — 24 source files tracked.
+
+$ vim src/util.ts        # change one file...
+
+$ testpick run
+testpick: 1/23 test file(s) affected by 1 change(s).
+
+ ✓ src/greet.test.ts (1 test) 4ms
+
+$ testpick explain       # ...and see *why*
+Changed files (1):
+  • src/util.ts
+Decisions:
+  ✓ src/util.ts  [coverage map → 1 test(s)]
+      → src/greet.test.ts
+Result: run 1 of 23 test file(s).
+```
+
+> Want a GIF for your README/socials? A ready-to-run [`vhs`](https://github.com/charmbracelet/vhs)
+> script lives at [`demo.tape`](./demo.tape): `brew install vhs && vhs demo.tape`.
 
 ## Why not just `vitest --changed` / `jest --onlyChanged`?
 
