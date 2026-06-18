@@ -15,7 +15,7 @@ export async function runCommand(args) {
   }
 
   const map = loadMap(root);
-  if (!map) throw new Error("No coverage map yet. Run `difftest map` first.");
+  if (!map) throw new Error("No coverage map yet. Run `testpick map` first.");
 
   const changed = changedFiles(args.base);
   if (!changed.length) {
@@ -36,7 +36,7 @@ export async function runCommand(args) {
     );
   } else {
     console.log(
-      `difftest: ${tests.length}/${map.testFiles.length} test file(s) affected by ${changed.length} change(s).`
+      `testpick: ${tests.length}/${map.testFiles.length} test file(s) affected by ${changed.length} change(s).`
     );
   }
   console.log("");

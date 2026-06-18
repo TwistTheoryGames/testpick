@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 
-const MAP_DIR = ".difftest";
+const MAP_DIR = ".testpick";
 const MAP_FILE = "map.json";
 
 export function mapPath(root) {
@@ -29,7 +29,7 @@ export function loadMap(root) {
   try {
     return JSON.parse(readFileSync(p, "utf8"));
   } catch {
-    throw new Error(`Corrupt map at ${p}. Re-run \`difftest map\` to rebuild.`);
+    throw new Error(`Corrupt map at ${p}. Re-run \`testpick map\` to rebuild.`);
   }
 }
 

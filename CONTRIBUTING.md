@@ -1,29 +1,29 @@
-# Contributing to difftest
+# Contributing to testpick
 
-Thanks for your interest! difftest is intentionally small and dependency-free
+Thanks for your interest! testpick is intentionally small and dependency-free
 (plain Node ESM, no build step).
 
 ## Dev setup
 
 ```bash
 git clone <your fork>
-cd difftest
+cd testpick
 node --test            # run the unit tests (no install needed)
-node bin/difftest.js --help
+node bin/testpick.js --help
 ```
 
 ## Trying it against a real project
 
 ```bash
 cd /path/to/some/vitest-or-jest-project
-node /path/to/difftest/bin/difftest.js map
-node /path/to/difftest/bin/difftest.js explain
+node /path/to/testpick/bin/testpick.js map
+node /path/to/testpick/bin/testpick.js explain
 ```
 
 ## Guidelines
 
 - Keep the core dependency-free. The whole tool should run with just Node.
-- **Safety is the contract:** difftest must never silently skip a test that could
+- **Safety is the contract:** testpick must never silently skip a test that could
   be affected. When in doubt, select more. New selection logic needs a test in
   `test/` covering the "unsure → run it anyway" path.
 - Add a unit test for any new pure logic (`test/*.test.js`, run by `node --test`).

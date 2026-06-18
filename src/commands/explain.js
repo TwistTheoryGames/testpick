@@ -6,7 +6,7 @@ export async function explainCommand(args) {
   assertGitRepo();
   const root = repoRoot();
   const map = loadMap(root);
-  if (!map) throw new Error("No coverage map yet. Run `difftest map` first.");
+  if (!map) throw new Error("No coverage map yet. Run `testpick map` first.");
 
   const changed = changedFiles(args.base);
   if (!changed.length) {

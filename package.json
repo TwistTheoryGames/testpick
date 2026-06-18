@@ -1,10 +1,10 @@
 {
-  "name": "difftest",
+  "name": "testpick",
   "version": "0.1.0",
   "description": "Run only the tests your diff can actually break. Coverage-based test selection that catches what static import graphs miss — for Jest, Vitest & monorepos.",
   "type": "module",
   "bin": {
-    "difftest": "bin/difftest.js"
+    "testpick": "bin/testpick.js"
   },
   "files": [
     "bin",
@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "difftest": "node bin/difftest.js",
+    "testpick": "node bin/testpick.js",
     "test": "node --test"
   },
   "keywords": [
@@ -32,12 +32,12 @@
   },
   "author": "Kazutaka Sugiyama",
   "license": "MIT",
-  "homepage": "https://github.com/TwistTheoryGames/difftest#readme",
+  "homepage": "https://github.com/TwistTheoryGames/testpick#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TwistTheoryGames/difftest.git"
+    "url": "git+https://github.com/TwistTheoryGames/testpick.git"
   },
   "bugs": {
-    "url": "https://github.com/TwistTheoryGames/difftest/issues"
+    "url": "https://github.com/TwistTheoryGames/testpick/issues"
   }
 }

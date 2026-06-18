@@ -3,12 +3,12 @@ import { runCommand } from "../src/commands/run.js";
 import { mapCommand } from "../src/commands/map.js";
 import { explainCommand } from "../src/commands/explain.js";
 
-const HELP = `difftest — run only the tests your diff can actually break
+const HELP = `testpick — run only the tests your diff can actually break
 
 Usage:
-  difftest map [--base <ref>]      Build the coverage map (run once, then refresh occasionally)
-  difftest run [--base <ref>]      Run only the tests affected by your changes
-  difftest explain [--base <ref>]  Show which tests would run and *why* (no execution)
+  testpick map [--base <ref>]      Build the coverage map (run once, then refresh occasionally)
+  testpick run [--base <ref>]      Run only the tests affected by your changes
+  testpick explain [--base <ref>]  Show which tests would run and *why* (no execution)
 
 Options:
   --base <ref>   Git ref to diff against (default: working tree vs HEAD).
@@ -23,7 +23,7 @@ Options:
   -j, --jobs <n> With map: max concurrent coverage passes (default: CPU count).
   -h, --help     Show this help.
 
-Philosophy: never skip a test that might be affected. When unsure, difftest runs more,
+Philosophy: never skip a test that might be affected. When unsure, testpick runs more,
 not less. The map catches static + runtime couplings; --ai covers the rest.`;
 
 function parseArgs(argv) {

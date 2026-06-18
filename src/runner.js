@@ -8,7 +8,7 @@ import { join } from "node:path";
 export function detectRunner(root) {
   const pkgPath = join(root, "package.json");
   if (!existsSync(pkgPath)) {
-    throw new Error("No package.json found. difftest v0.1 targets JS/TS projects.");
+    throw new Error("No package.json found. testpick v0.1 targets JS/TS projects.");
   }
   const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
@@ -23,7 +23,7 @@ export function detectRunner(root) {
 
   throw new Error(
     "Could not detect Jest or Vitest in package.json. " +
-      "difftest v0.1 supports those two; more runners are on the roadmap."
+      "testpick v0.1 supports those two; more runners are on the roadmap."
   );
 }
 

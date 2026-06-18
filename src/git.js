@@ -13,7 +13,7 @@ export function assertGitRepo() {
   try {
     git(["rev-parse", "--is-inside-work-tree"]);
   } catch {
-    throw new Error("Not a git repository. difftest needs git to know what changed.");
+    throw new Error("Not a git repository. testpick needs git to know what changed.");
   }
 }
 
@@ -47,8 +47,8 @@ export function changedFiles(base) {
 }
 
 // Tool/build artifacts that are never meaningful source changes, even when a
-// project forgets to .gitignore them. Keeps difftest from a needless run-all.
-const IGNORE_RE = /(^|\/)(node_modules|\.difftest|\.git|coverage|dist|build|\.next|\.turbo|\.vite)(\/|$)/;
+// project forgets to .gitignore them. Keeps testpick from a needless run-all.
+const IGNORE_RE = /(^|\/)(node_modules|\.testpick|\.git|coverage|dist|build|\.next|\.turbo|\.vite)(\/|$)/;
 
 function isIgnored(file) {
   return IGNORE_RE.test(file);

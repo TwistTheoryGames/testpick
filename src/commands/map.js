@@ -41,7 +41,7 @@ function addEdges(map, testFile, sources) {
 
 /** Isolated, one-process-per-file measurement (robust fallback / Jest path). */
 async function measurePerFile(root, runner, testFile) {
-  const outDir = mkdtempSync(join(tmpdir(), "difftest-cov-"));
+  const outDir = mkdtempSync(join(tmpdir(), "testpick-cov-"));
   try {
     await runQuietAsync(root, coverageArgs(runner, testFile, outDir));
     return coveredSourceFiles(root, outDir);
@@ -143,6 +143,6 @@ export async function mapCommand(args = {}) {
   console.log(
     `\n✔ Map saved to ${mapPath(root)} — ${Object.keys(map.edges).length} source files tracked.`
   );
-  if (!prev) console.log("Add .difftest/ to .gitignore (or commit it to share the map in CI).");
+  if (!prev) console.log("Add .testpick/ to .gitignore (or commit it to share the map in CI).");
   return mapPath(root);
 }

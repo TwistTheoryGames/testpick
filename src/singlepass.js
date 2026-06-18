@@ -66,10 +66,10 @@ function readResults(out, byTest) {
  * we can't single-pass never produces a silently under-selecting map.
  */
 export async function singlePassVitest(root, testFiles, jobs = 1) {
-  const dir = mkdtempSync(join(tmpdir(), "difftest-sp-"));
+  const dir = mkdtempSync(join(tmpdir(), "testpick-sp-"));
   const userConfig = findUserConfig(root);
   // The temp config lives in the repo root so relative plugin/config imports resolve.
-  const cfgPath = join(root, ".difftest.tmp.vitest.config.mjs");
+  const cfgPath = join(root, ".testpick.tmp.vitest.config.mjs");
   writeFileSync(cfgPath, configSource(root, userConfig));
 
   const shards = shard(testFiles, Math.max(1, jobs));
@@ -82,7 +82,7 @@ export async function singlePassVitest(root, testFiles, jobs = 1) {
       const r = await runQuietAsync(
         root,
         ["vitest", "run", ...files, "--config", cfgPath],
-        { env: { DIFFTEST_OUT: out, DIFFTEST_ROOT: root } }
+        { env: { TESTPICK_OUT: out, TESTPICK_ROOT: root } }
       );
       if (r.status) status = r.status;
       readResults(out, byTest);
