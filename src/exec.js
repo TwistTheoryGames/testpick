@@ -1,15 +1,22 @@
 import { spawnSync, spawn } from "node:child_process";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 
-/** Resolve a locally-installed runner binary (node_modules/.bin/<name>). */
+/**
+ * Resolve a locally-installed runner binary, walking up from `root` so hoisted
+ * monorepo binaries (in the workspace root's node_modules/.bin) are found.
+ */
 export function binPath(root, name) {
   const bin = process.platform === "win32" ? `${name}.cmd` : name;
-  const p = join(root, "node_modules", ".bin", bin);
-  if (!existsSync(p)) {
-    throw new Error(`${name} is not installed in this project (looked in node_modules/.bin).`);
+  let dir = root;
+  for (;;) {
+    const p = join(dir, "node_modules", ".bin", bin);
+    if (existsSync(p)) return p;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
-  return p;
+  throw new Error(`${name} is not installed (looked in node_modules/.bin up from ${root}).`);
 }
 
 /** Run a runner command, inheriting stdio so the user sees live test output. */

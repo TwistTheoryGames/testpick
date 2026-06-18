@@ -119,6 +119,24 @@ Use `--full` to force a clean rebuild. If single-pass can't account for a file
 (e.g. a project config it couldn't merge), that file falls back to isolated
 per-file measurement automatically — the map is never silently incomplete.
 
+## Monorepos
+
+testpick detects workspaces (npm/yarn/pnpm `workspaces`, or `pnpm-workspace.yaml`)
+and treats each package as its own unit — its own runner, its own map. A package
+using Vitest and another using Jest in the same repo both work; `testpick map` /
+`run` iterate them automatically.
+
+```console
+$ testpick run
+Monorepo: 2 package(s).
+[packages/api]  3/41 test file(s) affected by 2 change(s).
+[packages/web]  1/120 test file(s) affected by 1 change(s).
+```
+
+Selection is per package, so changing one package doesn't run another's tests.
+A change **outside every package** (root config, lockfile, shared tooling) is
+treated as potentially affecting everything, so testpick safely runs all packages.
+
 ## In CI (GitHub Actions)
 
 ```yaml
@@ -131,7 +149,8 @@ schedule.
 
 ## Status
 
-v0.1 — supports **Vitest** and **Jest**. Roadmap: faster single-pass map building,
-monorepo package-level selection, and more runners/languages.
+v0.1 — supports **Vitest** and **Jest**, single-file repos and **monorepos**
+(per-package, mixed runners). Roadmap: dependency-aware cross-package selection,
+more runners/languages.
 
 MIT licensed.

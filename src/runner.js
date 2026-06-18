@@ -1,11 +1,25 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
+const VITEST_CONFIGS = ["vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs", "vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"];
+const JEST_CONFIGS = ["jest.config.js", "jest.config.cjs", "jest.config.mjs", "jest.config.ts", "jest.config.json"];
+
+/** Read root package.json deps (used as a hoisted-deps fallback for workspaces). */
+export function readDeps(root) {
+  try {
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    return { ...pkg.dependencies, ...pkg.devDependencies };
+  } catch {
+    return {};
+  }
+}
+
 /**
- * Detect the test runner from package.json. We deliberately support the two
- * runners whose built-in change detection is weakest or absent at CI level.
+ * Detect the test runner for a directory. Monorepo packages often omit the
+ * runner from their own deps (it's hoisted), so we also use config files, the
+ * package.json `jest` field, the test script, and finally the hoisted root deps.
  */
-export function detectRunner(root) {
+export function detectRunner(root, rootDeps = null) {
   const pkgPath = join(root, "package.json");
   if (!existsSync(pkgPath)) {
     throw new Error("No package.json found. testpick v0.1 targets JS/TS projects.");
@@ -16,13 +30,24 @@ export function detectRunner(root) {
   if (deps.vitest) return "vitest";
   if (deps.jest || deps["ts-jest"]) return "jest";
 
-  // fall back to whatever the test script mentions
+  // config-based signals
+  if (pkg.jest) return "jest";
+  if (VITEST_CONFIGS.some((c) => existsSync(join(root, c)))) return "vitest";
+  if (JEST_CONFIGS.some((c) => existsSync(join(root, c)))) return "jest";
+
+  // test script
   const testScript = pkg.scripts?.test || "";
   if (testScript.includes("vitest")) return "vitest";
   if (testScript.includes("jest")) return "jest";
 
+  // hoisted workspace deps (lowest priority — ambiguous if root has both)
+  if (rootDeps) {
+    if (rootDeps.vitest) return "vitest";
+    if (rootDeps.jest || rootDeps["ts-jest"]) return "jest";
+  }
+
   throw new Error(
-    "Could not detect Jest or Vitest in package.json. " +
+    "Could not detect Jest or Vitest. " +
       "testpick v0.1 supports those two; more runners are on the roadmap."
   );
 }

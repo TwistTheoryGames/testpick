@@ -3,12 +3,13 @@ import { tmpdir, availableParallelism } from "node:os";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { assertGitRepo, repoRoot } from "../git.js";
-import { detectRunner, coverageArgs } from "../runner.js";
+import { detectRunner, coverageArgs, readDeps } from "../runner.js";
 import { runQuietAsync, pool } from "../exec.js";
 import { coveredSourceFiles } from "../coverage.js";
 import { loadMap, saveMap, emptyMap, mapPath, pruneTest } from "../mapStore.js";
 import { isTestFile } from "../select.js";
 import { singlePassVitest, singlePassJest } from "../singlepass.js";
+import { findUnits } from "../workspaces.js";
 
 const TEST_GLOBS = ["**/*.{test,spec}.{js,jsx,ts,tsx,cjs,mjs}", "**/__tests__/**/*.{js,jsx,ts,tsx}"];
 
@@ -53,7 +54,24 @@ async function measurePerFile(root, runner, testFile) {
 export async function mapCommand(args = {}) {
   assertGitRepo();
   const root = repoRoot();
-  const runner = detectRunner(root);
+  const units = findUnits(root);
+  const monorepo = units.length > 1;
+  const rootDeps = readDeps(root);
+  if (monorepo) console.log(`Monorepo detected: ${units.length} package(s).\n`);
+
+  for (const unit of units) {
+    if (monorepo) console.log(`▶ ${unit.prefix || "."}`);
+    try {
+      await mapUnit(unit.dir, args, rootDeps);
+    } catch (err) {
+      if (!monorepo) throw err; // single repo: surface the error as before
+      console.log(`  skipped: ${err.message}\n`);
+    }
+  }
+}
+
+async function mapUnit(root, args = {}, rootDeps = null) {
+  const runner = detectRunner(root, rootDeps);
   const testFiles = discoverTestFiles(root);
 
   if (!testFiles.length) {
