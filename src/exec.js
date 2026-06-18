@@ -27,7 +27,7 @@ export function runQuiet(root, argv) {
 }
 
 /** Async variant so map building can run many coverage passes concurrently. */
-export function runQuietAsync(root, argv) {
+export function runQuietAsync(root, argv, opts = {}) {
   return new Promise((resolve) => {
     const [name, ...rest] = argv;
     let bin;
@@ -36,7 +36,8 @@ export function runQuietAsync(root, argv) {
     } catch (err) {
       return resolve({ status: 1, stdout: "", stderr: err.message });
     }
-    const child = spawn(bin, rest, { cwd: root });
+    const env = opts.env ? { ...process.env, ...opts.env } : process.env;
+    const child = spawn(bin, rest, { cwd: root, env });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d));

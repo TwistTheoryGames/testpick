@@ -1,6 +1,5 @@
 import { globSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { availableParallelism } from "node:os";
+import { tmpdir, availableParallelism } from "node:os";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { assertGitRepo, repoRoot } from "../git.js";
@@ -9,6 +8,7 @@ import { runQuietAsync, pool } from "../exec.js";
 import { coveredSourceFiles } from "../coverage.js";
 import { loadMap, saveMap, emptyMap, mapPath, pruneTest } from "../mapStore.js";
 import { isTestFile } from "../select.js";
+import { singlePassVitest } from "../singlepass.js";
 
 const TEST_GLOBS = ["**/*.{test,spec}.{js,jsx,ts,tsx,cjs,mjs}", "**/__tests__/**/*.{js,jsx,ts,tsx}"];
 
@@ -31,18 +31,20 @@ function hashFile(root, file) {
   }
 }
 
-/** Measure one test file's runtime footprint and merge its edges into the map. */
-async function measure(root, runner, testFile, map) {
+function addEdges(map, testFile, sources) {
+  pruneTest(map, testFile); // drop any stale edges before re-adding
+  for (const src of sources) {
+    if (isTestFile(src)) continue; // edges are source -> test
+    (map.edges[src] ||= []).push(testFile);
+  }
+}
+
+/** Isolated, one-process-per-file measurement (robust fallback / Jest path). */
+async function measurePerFile(root, runner, testFile) {
   const outDir = mkdtempSync(join(tmpdir(), "difftest-cov-"));
   try {
-    const { status } = await runQuietAsync(root, coverageArgs(runner, testFile, outDir));
-    const sources = coveredSourceFiles(root, outDir);
-    pruneTest(map, testFile); // drop any stale edges before re-adding
-    for (const src of sources) {
-      if (isTestFile(src)) continue; // edges are source -> test
-      (map.edges[src] ||= []).push(testFile);
-    }
-    return { status, count: sources.length };
+    await runQuietAsync(root, coverageArgs(runner, testFile, outDir));
+    return coveredSourceFiles(root, outDir);
   } finally {
     rmSync(outDir, { recursive: true, force: true });
   }
@@ -58,7 +60,6 @@ export async function mapCommand(args = {}) {
     throw new Error("No test files found. Looked for *.test.* / *.spec.* / __tests__/**.");
   }
 
-  // Start from the existing map unless --full, or runner changed.
   const prev = args.full ? null : loadMap(root);
   const map = prev && prev.runner === runner ? prev : emptyMap(runner);
   map.testHashes ||= {};
@@ -73,34 +74,65 @@ export async function mapCommand(args = {}) {
   }
   map.testFiles = testFiles;
 
-  // Only (re)measure test files that are new or whose content changed.
+  // Only (re)measure new or changed test files.
   const hashes = Object.fromEntries(testFiles.map((f) => [f, hashFile(root, f)]));
   const todo = testFiles.filter((f) => map.testHashes[f] !== hashes[f]);
   const skipped = testFiles.length - todo.length;
-
-  const jobs = Math.max(1, args.jobs || availableParallelism());
 
   if (!todo.length) {
     console.log(`Map is already up to date (${testFiles.length} test files unchanged). ✔`);
     return mapPath(root);
   }
 
-  console.log(
-    `Mapping ${todo.length} test file(s) with ${runner}` +
-      (skipped ? ` (${skipped} unchanged, reused)` : "") +
-      ` — up to ${jobs} in parallel.\n`
-  );
+  const jobs = Math.max(1, args.jobs || availableParallelism());
+  const singlePass = runner === "vitest" && !args.perFile;
 
-  let done = 0;
-  await pool(todo, jobs, async (testFile) => {
-    const { status, count } = await measure(root, runner, testFile, map);
-    done++;
+  let measured = 0;
+  let fallbacks = [];
+
+  if (singlePass) {
     console.log(
-      `  [${done}/${todo.length}] ${testFile} … ` +
-        (status === 0 ? `${count} files` : `done (exit ${status})`)
+      `Mapping ${todo.length} test file(s) with ${runner} in ${Math.min(jobs, todo.length)} ` +
+        `single-pass shard(s)` +
+        (skipped ? ` (${skipped} unchanged, reused)` : "") +
+        ".\n"
     );
-    map.testHashes[testFile] = hashes[testFile];
-  });
+    const { byTest } = await singlePassVitest(root, todo, jobs);
+    for (const f of todo) {
+      const sources = byTest.get(f);
+      if (sources && sources.length) {
+        addEdges(map, f, sources);
+        map.testHashes[f] = hashes[f];
+        measured++;
+      } else {
+        fallbacks.push(f); // unaccounted for → measure in isolation, never guess
+      }
+    }
+    if (fallbacks.length) {
+      console.log(
+        `  single pass covered ${measured}/${todo.length}; ` +
+          `re-measuring ${fallbacks.length} in isolation (custom setup or no coverage).`
+      );
+    }
+  } else {
+    fallbacks = todo;
+    console.log(
+      `Mapping ${todo.length} test file(s) with ${runner}` +
+        (skipped ? ` (${skipped} unchanged, reused)` : "") +
+        ` — up to ${jobs} in parallel.\n`
+    );
+  }
+
+  if (fallbacks.length) {
+    let done = 0;
+    await pool(fallbacks, jobs, async (testFile) => {
+      const sources = await measurePerFile(root, runner, testFile);
+      addEdges(map, testFile, sources);
+      map.testHashes[testFile] = hashes[testFile];
+      done++;
+      console.log(`  [${done}/${fallbacks.length}] ${testFile} … ${sources.length} files`);
+    });
+  }
 
   for (const src of Object.keys(map.edges)) {
     map.edges[src] = [...new Set(map.edges[src])];

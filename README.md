@@ -57,10 +57,21 @@ difftest explain [--base <ref>]  # dry-run: print the selection + reasoning
 
 ### Fast maps
 
-`difftest map` measures test files **in parallel** (one lane per CPU) and is
-**incremental**: it hashes each test file and only re-measures the ones that
-changed since the last map. A no-op refresh is instant; editing one test re-maps
-just that file. Use `--full` to force a clean rebuild.
+`difftest map` is built for speed three ways:
+
+- **Single-pass (Vitest, default):** instead of starting the runner once per test
+  file, difftest shards the files across your cores and runs each shard as one
+  serial Vitest process, attributing V8 precise-coverage deltas to each file. Far
+  fewer startups — measurably faster wall-clock *and* less total CPU than
+  one-process-per-file. Use `--per-file` to opt out (Jest uses per-file today).
+- **Incremental:** each test file is hashed; only changed/new files are
+  re-measured. A no-op refresh is instant; editing one test re-maps just that file.
+- **Parallel:** the per-file path (and the shards) run up to one lane per CPU
+  (`-j` to tune).
+
+Use `--full` to force a clean rebuild. If single-pass can't account for a file
+(e.g. a project config it couldn't merge), that file falls back to isolated
+per-file measurement automatically — the map is never silently incomplete.
 
 ## In CI (GitHub Actions)
 
