@@ -1,0 +1,55 @@
+<svg width="1000" height="420" viewBox="0 0 1000 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#0d1117"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3fb950"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1000" height="420" fill="url(#bg)"/>
+  <rect width="1000" height="6" fill="url(#accent)"/>
+
+  <!-- wordmark -->
+  <text x="56" y="150" font-family="monospace" font-size="78" font-weight="700" fill="#e6edf3">test<tspan fill="#3fb950">pick</tspan></text>
+
+  <!-- tagline -->
+  <text x="60" y="200" font-family="sans-serif" font-size="25" fill="#8b949e">Run only the tests your diff can actually break.</text>
+
+  <!-- chips -->
+  <g font-family="sans-serif" font-size="16" fill="#c9d1d9">
+    <rect x="60"  y="232" width="84"  height="32" rx="16" fill="#161b22" stroke="#30363d"/>
+    <text x="102" y="253" text-anchor="middle">Vitest</text>
+    <rect x="152" y="232" width="70"  height="32" rx="16" fill="#161b22" stroke="#30363d"/>
+    <text x="187" y="253" text-anchor="middle">Jest</text>
+    <rect x="230" y="232" width="112" height="32" rx="16" fill="#161b22" stroke="#30363d"/>
+    <text x="286" y="253" text-anchor="middle">Monorepos</text>
+    <rect x="350" y="232" width="104" height="32" rx="16" fill="#161b22" stroke="#30363d"/>
+    <text x="402" y="253" text-anchor="middle">Zero deps</text>
+    <rect x="462" y="232" width="62"  height="32" rx="16" fill="#161b22" stroke="#30363d"/>
+    <text x="493" y="253" text-anchor="middle">MIT</text>
+  </g>
+
+  <!-- install line -->
+  <text x="60" y="320" font-family="monospace" font-size="20" fill="#6e7681">$ <tspan fill="#c9d1d9">npx testpick run</tspan></text>
+
+  <!-- terminal card -->
+  <g>
+    <rect x="600" y="80" width="356" height="232" rx="14" fill="#161b22" stroke="#30363d"/>
+    <circle cx="624" cy="106" r="6" fill="#ff5f56"/>
+    <circle cx="644" cy="106" r="6" fill="#ffbd2e"/>
+    <circle cx="664" cy="106" r="6" fill="#27c93f"/>
+    <line x1="600" y1="128" x2="956" y2="128" stroke="#30363d"/>
+
+    <g font-family="monospace" font-size="16">
+      <text x="624" y="162" fill="#6e7681">$ <tspan fill="#c9d1d9">testpick run</tspan></text>
+      <text x="624" y="192" fill="#8b949e">3/214 test files affected</text>
+      <text x="624" y="222" fill="#3fb950">✓ 3 ran</text>
+      <text x="724" y="222" fill="#6e7681">211 skipped</text>
+      <text x="624" y="272" fill="#8b949e">CI: <tspan fill="#c9d1d9">6m 12s</tspan> <tspan fill="#6e7681">→</tspan> <tspan fill="#3fb950" font-weight="700">11s</tspan></text>
+    </g>
+  </g>
+</svg>

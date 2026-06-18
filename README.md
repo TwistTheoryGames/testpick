@@ -1,5 +1,7 @@
 # testpick
 
+![testpick — run only the tests your diff can actually break](./assets/cover.png)
+
 [![npm](https://img.shields.io/npm/v/testpick.svg)](https://www.npmjs.com/package/testpick)
 [![CI](https://github.com/TwistTheoryGames/testpick/actions/workflows/ci.yml/badge.svg)](https://github.com/TwistTheoryGames/testpick/actions/workflows/ci.yml)
 [![node](https://img.shields.io/node/v/testpick.svg)](https://www.npmjs.com/package/testpick)
@@ -40,7 +42,7 @@ Result: run 1 of 23 test file(s).
 ```
 
 > Want a GIF for your README/socials? A ready-to-run [`vhs`](https://github.com/charmbracelet/vhs)
-> script lives at [`demo.tape`](./demo.tape): `brew install vhs && vhs demo.tape`.
+> script lives at [`assets/demo.tape`](./assets/demo.tape): `brew install vhs && vhs assets/demo.tape`.
 
 ## Why not just `vitest --changed` / `jest --onlyChanged`?
 
