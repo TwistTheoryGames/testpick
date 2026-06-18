@@ -52,6 +52,15 @@ difftest explain [--base <ref>]  # dry-run: print the selection + reasoning
 | `--base <ref>` | Diff against a ref (CI: `--base origin/main`). Default: working tree vs HEAD. |
 | `--ai` | Use an LLM (needs `ANTHROPIC_API_KEY`) to resolve unmapped changes. |
 | `--all` | Escape hatch: run the whole suite. |
+| `--full` | `map` only: rebuild from scratch instead of incrementally. |
+| `-j, --jobs <n>` | `map` only: max concurrent coverage passes (default: CPU count). |
+
+### Fast maps
+
+`difftest map` measures test files **in parallel** (one lane per CPU) and is
+**incremental**: it hashes each test file and only re-measures the ones that
+changed since the last map. A no-op refresh is instant; editing one test re-maps
+just that file. Use `--full` to force a clean rebuild.
 
 ## In CI (GitHub Actions)
 

@@ -1,12 +1,13 @@
-import { globSync } from "node:fs";
-import { mkdtempSync, rmSync } from "node:fs";
+import { globSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { availableParallelism } from "node:os";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { assertGitRepo, repoRoot } from "../git.js";
 import { detectRunner, coverageArgs } from "../runner.js";
-import { runQuiet } from "../exec.js";
+import { runQuietAsync, pool } from "../exec.js";
 import { coveredSourceFiles } from "../coverage.js";
-import { saveMap, emptyMap, mapPath } from "../mapStore.js";
+import { loadMap, saveMap, emptyMap, mapPath, pruneTest } from "../mapStore.js";
 import { isTestFile } from "../select.js";
 
 const TEST_GLOBS = ["**/*.{test,spec}.{js,jsx,ts,tsx,cjs,mjs}", "**/__tests__/**/*.{js,jsx,ts,tsx}"];
@@ -22,7 +23,32 @@ function discoverTestFiles(root) {
   return [...found];
 }
 
-export async function mapCommand() {
+function hashFile(root, file) {
+  try {
+    return createHash("sha1").update(readFileSync(join(root, file))).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/** Measure one test file's runtime footprint and merge its edges into the map. */
+async function measure(root, runner, testFile, map) {
+  const outDir = mkdtempSync(join(tmpdir(), "difftest-cov-"));
+  try {
+    const { status } = await runQuietAsync(root, coverageArgs(runner, testFile, outDir));
+    const sources = coveredSourceFiles(root, outDir);
+    pruneTest(map, testFile); // drop any stale edges before re-adding
+    for (const src of sources) {
+      if (isTestFile(src)) continue; // edges are source -> test
+      (map.edges[src] ||= []).push(testFile);
+    }
+    return { status, count: sources.length };
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+}
+
+export async function mapCommand(args = {}) {
   assertGitRepo();
   const root = repoRoot();
   const runner = detectRunner(root);
@@ -32,40 +58,59 @@ export async function mapCommand() {
     throw new Error("No test files found. Looked for *.test.* / *.spec.* / __tests__/**.");
   }
 
-  console.log(`Building coverage map with ${runner} for ${testFiles.length} test file(s)...`);
-  console.log("(one-time cost — runs each test file with coverage to learn its real footprint)\n");
+  // Start from the existing map unless --full, or runner changed.
+  const prev = args.full ? null : loadMap(root);
+  const map = prev && prev.runner === runner ? prev : emptyMap(runner);
+  map.testHashes ||= {};
 
-  const map = emptyMap(runner);
-  map.testFiles = testFiles;
-
-  let i = 0;
-  for (const testFile of testFiles) {
-    i++;
-    process.stdout.write(`  [${i}/${testFiles.length}] ${testFile} ... `);
-    const outDir = mkdtempSync(join(tmpdir(), "difftest-cov-"));
-    try {
-      const { status } = runQuiet(root, coverageArgs(runner, testFile, outDir));
-      const sources = coveredSourceFiles(root, outDir);
-      for (const src of sources) {
-        if (isTestFile(src)) continue; // edges are source -> test
-        (map.edges[src] ||= []).push(testFile);
-      }
-      console.log(status === 0 ? `${sources.length} files` : `done (exit ${status})`);
-    } finally {
-      rmSync(outDir, { recursive: true, force: true });
+  // Drop edges/hashes for test files that no longer exist.
+  const live = new Set(testFiles);
+  for (const old of map.testFiles || []) {
+    if (!live.has(old)) {
+      pruneTest(map, old);
+      delete map.testHashes[old];
     }
   }
+  map.testFiles = testFiles;
 
-  // de-dupe edge targets
+  // Only (re)measure test files that are new or whose content changed.
+  const hashes = Object.fromEntries(testFiles.map((f) => [f, hashFile(root, f)]));
+  const todo = testFiles.filter((f) => map.testHashes[f] !== hashes[f]);
+  const skipped = testFiles.length - todo.length;
+
+  const jobs = Math.max(1, args.jobs || availableParallelism());
+
+  if (!todo.length) {
+    console.log(`Map is already up to date (${testFiles.length} test files unchanged). ✔`);
+    return mapPath(root);
+  }
+
+  console.log(
+    `Mapping ${todo.length} test file(s) with ${runner}` +
+      (skipped ? ` (${skipped} unchanged, reused)` : "") +
+      ` — up to ${jobs} in parallel.\n`
+  );
+
+  let done = 0;
+  await pool(todo, jobs, async (testFile) => {
+    const { status, count } = await measure(root, runner, testFile, map);
+    done++;
+    console.log(
+      `  [${done}/${todo.length}] ${testFile} … ` +
+        (status === 0 ? `${count} files` : `done (exit ${status})`)
+    );
+    map.testHashes[testFile] = hashes[testFile];
+  });
+
   for (const src of Object.keys(map.edges)) {
     map.edges[src] = [...new Set(map.edges[src])];
   }
 
   map.generatedAt = new Date().toISOString();
-  const p = saveMap(root, map);
+  saveMap(root, map);
   console.log(
     `\n✔ Map saved to ${mapPath(root)} — ${Object.keys(map.edges).length} source files tracked.`
   );
-  console.log("Add .difftest/ to .gitignore (or commit it to share the map in CI).");
-  return p;
+  if (!prev) console.log("Add .difftest/ to .gitignore (or commit it to share the map in CI).");
+  return mapPath(root);
 }

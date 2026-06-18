@@ -41,5 +41,14 @@ export function saveMap(root, map) {
 }
 
 export function emptyMap(runner) {
-  return { version: 1, runner, generatedAt: null, testFiles: [], edges: {} };
+  return { version: 1, runner, generatedAt: null, testFiles: [], testHashes: {}, edges: {} };
+}
+
+/** Remove every edge pointing at a given test file (used before re-measuring it). */
+export function pruneTest(map, testFile) {
+  for (const src of Object.keys(map.edges)) {
+    const kept = map.edges[src].filter((t) => t !== testFile);
+    if (kept.length) map.edges[src] = kept;
+    else delete map.edges[src];
+  }
 }
