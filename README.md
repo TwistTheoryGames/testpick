@@ -16,16 +16,30 @@ npx difftest run     # from now on: run only what your changes affect
 Those are great — until your code has couplings their **static import graph can't
 see**:
 
-- a test reaches a module via a **dynamic `import()`**, DI, or a string-keyed lookup
-- a change to a **JSON fixture, config file, or env-driven branch**
-- a **shared global** or a generated file
+- a module loaded via a **runtime-computed path** — a plugin registry, DI
+  container, or `import(/* @vite-ignore */ pathFromConfig)`. Vite can glob a
+  *literal* `import(\`./${name}.js\`)`, but it cannot analyze a path that's data.
+- code reached only at runtime that the static graph **over- or under-counts**
 
 difftest builds its map from **runtime coverage** — what each test *actually
-executed* — so it captures those edges. Real example from the test suite:
+executed* — so it captures those edges. Verified example (see `difftest-real`
+fixture):
 
-| Change | `vitest related` | `difftest` |
-| --- | --- | --- |
-| edit `strings.js` (used only via `import(\`./${name}.js\`)`) | runs `strings.test.js` ❌ misses the dynamic caller | runs `strings.test.js` **and** `loader.test.js` ✅ |
+```ts
+const REGISTRY = { feat: "../features/feat.ts" };
+export const load = (n) => import(/* @vite-ignore */ REGISTRY[n]); // Vite can't see this
+```
+
+| Change `features/feat.ts` | result |
+| --- | --- |
+| `vitest related features/feat.ts` | **No test files found** ❌ |
+| `difftest run` | runs `loader.test.ts` ✅ |
+
+> Note: difftest and Vite's module graph are complementary, not strictly better.
+> A coverage map is more precise for runtime-computed couplings and for trimming
+> imported-but-unexecuted modules; the static graph can flag a yet-to-run branch a
+> coverage map hasn't seen. That's why difftest always errs toward running more
+> (see below) — and why it works the same for Jest, where there's no Vite graph.
 
 ## Safety first
 
